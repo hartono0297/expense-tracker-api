@@ -530,6 +530,18 @@
         }
       }
     },
+    "/health": {
+      "get": {
+        "tags": [
+          "ExpenseTracker"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Report/monthly": {
       "get": {
         "tags": [

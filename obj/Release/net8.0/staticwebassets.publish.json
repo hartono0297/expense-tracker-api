@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "mpczh02ZHHdWLpeoOsrRVsqHA5HFMVsn8whVB6bh0QE=",
+  "Source": "ExpenseTracker",
+  "BasePath": "_content/ExpenseTracker",
+  "Mode": "Default",
+  "ManifestType": "Publish",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

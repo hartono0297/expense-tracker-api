@@ -153,4 +153,9 @@ D:\Test\ExpenseTracker\Backend\ExpenseTracker\obj\Debug\net8.0\refint\ExpenseTra
 D:\Test\ExpenseTracker\Backend\ExpenseTracker\obj\Debug\net8.0\ExpenseTracker.pdb
 D:\Test\ExpenseTracker\Backend\ExpenseTracker\obj\Debug\net8.0\ExpenseTracker.genruntimeconfig.cache
 D:\Test\ExpenseTracker\Backend\ExpenseTracker\obj\Debug\net8.0\ref\ExpenseTracker.dll
-D:\Test\ExpenseTracker\Backend\ExpenseTracker\obj\Debug\net8.0\staticwebassets.upToDateCheck.txt
+D:\Test\ExpenseTracker\Backend\ExpenseTracker\obj\Debug\net8.0\ExpenseTracker.sourcelink.json
+D:\Test\ExpenseTracker\Backend\ExpenseTracker\bin\Debug\net8.0\publish\appsettings.Development.json
+D:\Test\ExpenseTracker\Backend\ExpenseTracker\bin\Debug\net8.0\publish\appsettings.json
+D:\Test\ExpenseTracker\Backend\ExpenseTracker\bin\Debug\net8.0\publish\ExpenseTracker.deps.json
+D:\Test\ExpenseTracker\Backend\ExpenseTracker\bin\Debug\net8.0\publish\ExpenseTracker.runtimeconfig.json
+D:\Test\ExpenseTracker\Backend\ExpenseTracker\bin\Debug\net8.0\publish\ExpenseTracker.staticwebassets.endpoints.json

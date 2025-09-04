@@ -13,19 +13,31 @@ using ExpenseTracker.Middlewares;
 using ExpenseTracker.Helpers.Extensions;
 using System.Text.Json;
 using System.Security.Claims;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
+// Tambahkan ini agar bisa diakses publik
+//builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
 });
 
+logger.LogInformation("Connection String from appsettings/env: {ConnectionString}", connectionString);
 
 // Add services to the container.
 // Add EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(connectionString, sqlServerOptionsAction: sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 10,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorNumbersToAdd: null);
+    }));
 
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -84,9 +96,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
-        policy => policy.WithOrigins("http://localhost:5173") // 👈 your Vue port
+        policy => policy
+                        .WithOrigins("http://localhost:8080") // 👈 your Vue port
+                        //.WithOrigins("http://expensetracker-webapi.s3-website-ap-southeast-2.amazonaws.com")                        
                         .AllowAnyHeader()
-                        .AllowAnyMethod());
+                        .AllowAnyMethod()
+                        //.AllowCredentials()
+                        );
 });
 
 builder.Services.AddAuthorization();
@@ -130,13 +146,13 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<LoggingMiddleware>();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+//if (app.Environment.IsDevelopment())
+//{
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+//}
 app.UseCors("AllowFrontend");
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -155,27 +171,7 @@ using (var scope = app.Services.CreateScope())
                 new Category { Name = "Transport", IsActive = true, UserId = null },
                 new Category { Name = "Utilities", IsActive = true, UserId = null } 
             );
-        }
-
-        if (!db.Users.Any())
-        {
-            db.Users.AddRange(
-                new User
-                {
-                    Username = "tono",
-                    Email = "tono@example.com",
-                    PasswordHash = new byte[0],
-                    PasswordSalt = new byte[0]
-                },
-                new User
-                {
-                    Username = "anna",
-                    Email = "anna@example.com",
-                    PasswordHash = new byte[0],
-                    PasswordSalt = new byte[0]
-                }
-            );
-        }
+        }       
 
         db.SaveChanges();
     }
@@ -185,4 +181,6 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+
+app.MapGet("/health", () => Results.Ok("OK"));
 app.Run();
