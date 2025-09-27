@@ -14,6 +14,7 @@ using ExpenseTracker.Helpers.Extensions;
 using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging;
+using AutoMapper;
 
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
@@ -110,6 +111,10 @@ builder.Services.AddControllers();
 builder.Services
     .AddRepositories()
     .AddServices();
+
+// Register AutoMapper by scanning this assembly for profiles
+builder.Services.AddAutoMapper(typeof(Program));
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -171,7 +176,7 @@ using (var scope = app.Services.CreateScope())
                 new Category { Name = "Transport", IsActive = true, UserId = null },
                 new Category { Name = "Utilities", IsActive = true, UserId = null } 
             );
-        }       
+        }      
 
         db.SaveChanges();
     }

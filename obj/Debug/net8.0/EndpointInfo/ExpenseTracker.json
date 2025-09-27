@@ -434,6 +434,44 @@
       }
     },
     "/api/Expense/{id}": {
+      "get": {
+        "tags": [
+          "Expense"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseDtoApiResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseDtoApiResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseDtoApiResponse"
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "tags": [
           "Expense"
@@ -889,17 +927,26 @@
         "additionalProperties": false
       },
       "ExpenseCreateDto": {
+        "required": [
+          "expenseDate",
+          "title"
+        ],
         "type": "object",
         "properties": {
           "categoryId": {
+            "maximum": 2147483647,
+            "minimum": 1,
             "type": "integer",
             "format": "int32"
           },
           "title": {
-            "type": "string",
-            "nullable": true
+            "maxLength": 100,
+            "minLength": 0,
+            "type": "string"
           },
           "amount": {
+            "maximum": 79228162514264337593543950335,
+            "minimum": 0.01,
             "type": "number",
             "format": "double"
           },
@@ -908,6 +955,8 @@
             "format": "date-time"
           },
           "note": {
+            "maxLength": 500,
+            "minLength": 0,
             "type": "string",
             "nullable": true
           }
@@ -1014,21 +1063,26 @@
         "additionalProperties": false
       },
       "ExpenseUpdateDto": {
+        "required": [
+          "expenseDate"
+        ],
         "type": "object",
         "properties": {
-          "userId": {
-            "type": "integer",
-            "format": "int32"
-          },
           "categoryId": {
+            "maximum": 2147483647,
+            "minimum": 1,
             "type": "integer",
             "format": "int32"
           },
           "title": {
+            "maxLength": 100,
+            "minLength": 0,
             "type": "string",
             "nullable": true
           },
           "amount": {
+            "maximum": 79228162514264337593543950335,
+            "minimum": 0.01,
             "type": "number",
             "format": "double"
           },
@@ -1037,6 +1091,8 @@
             "format": "date-time"
           },
           "note": {
+            "maxLength": 500,
+            "minLength": 0,
             "type": "string",
             "nullable": true
           }

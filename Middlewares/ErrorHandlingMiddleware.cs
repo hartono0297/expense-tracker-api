@@ -1,4 +1,8 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.ComponentModel.DataAnnotations;
+using ExpenseTracker.Models.Responses;
+using Microsoft.AspNetCore.Hosting;
 
 namespace ExpenseTracker.Middlewares
 {
@@ -6,11 +10,13 @@ namespace ExpenseTracker.Middlewares
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<ErrorHandlingMiddleware> _logger;
+        private readonly IWebHostEnvironment _env;
 
-        public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger)
+        public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger, IWebHostEnvironment env)
         {
             _next = next;
             _logger = logger;
+            _env = env;
         }
 
         public async Task InvokeAsync(HttpContext context)
@@ -23,13 +29,48 @@ namespace ExpenseTracker.Middlewares
             {
                 _logger.LogError(ex, "Unhandled Exception");
 
-                context.Response.StatusCode = 500;
+                int statusCode = StatusCodes.Status500InternalServerError;
+                string message = "Internal server error";
+
+                // Map common exception types to appropriate status codes
+                switch (ex)
+                {
+                    case ArgumentException _:
+                    case ValidationException _:
+                        statusCode = StatusCodes.Status400BadRequest;
+                        message = ex.Message;
+                        break;
+                    case UnauthorizedAccessException _:
+                        statusCode = StatusCodes.Status401Unauthorized;
+                        message = "Unauthorized";
+                        break;
+                    case KeyNotFoundException _:
+                        statusCode = StatusCodes.Status404NotFound;
+                        message = ex.Message;
+                        break;
+                    default:
+                        // keep generic message for production
+                        if (_env.IsDevelopment())
+                        {
+                            message = ex.Message;
+                        }
+                        break;
+                }
+
+                var response = ApiResponse<object>.Fail(message);
+
+                context.Response.StatusCode = statusCode;
                 context.Response.ContentType = "application/json";
 
-                var response = new { success = false, message = "Internal server error" };
-                await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                };
+
+                var json = JsonSerializer.Serialize(response, options);
+                await context.Response.WriteAsync(json);
             }
         }
     }
-
 }

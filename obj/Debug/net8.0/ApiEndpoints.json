@@ -260,6 +260,32 @@
   },
   {
     "ContainingType": "ExpenseTracker.Controllers.ExpenseController",
+    "Method": "GetExpenseById",
+    "RelativePath": "api/Expense/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "ExpenseTracker.Models.Responses.ApiResponse\u00601[[ExpenseTracker.DTOs.ExpenseDtos.ExpenseDto, ExpenseTracker, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "ExpenseTracker.Controllers.ExpenseController",
     "Method": "UpdateExpense",
     "RelativePath": "api/Expense/{id}",
     "HttpMethod": "PUT",

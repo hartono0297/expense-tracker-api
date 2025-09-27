@@ -4,115 +4,115 @@ using ExpenseTracker.Models;
 using ExpenseTracker.Models.Responses;
 using ExpenseTracker.Repositories.Interfaces;
 using ExpenseTracker.Services.Interfaces;
+using AutoMapper;
+using System.Threading;
 
 namespace ExpenseTracker.Services
 {
     public class ExpenseService : IExpenseService
     {
-        public readonly IExpenseRepository _expenseRepository;
-        private readonly ILogger<ExpenseController> _logger;
+        private readonly IExpenseRepository _expenseRepository;
+        private readonly ILogger<ExpenseService> _logger;
+        private readonly IMapper _mapper;
 
-        public ExpenseService(IExpenseRepository expenseRepository, ILogger<ExpenseController> logger)
+        public ExpenseService(IExpenseRepository expenseRepository, ILogger<ExpenseService> logger, IMapper mapper)
         {
             _expenseRepository = expenseRepository;
             _logger = logger;
+            _mapper = mapper;
         }
 
-        public async Task<PaginatedResponse<ExpenseDto>> GetExpensesAsync(int user, int page, int limit, string? search = null)
+        public async Task<PaginatedResponse<ExpenseDto>> GetExpensesAsync(int user, int page, int limit, string? search = null, CancellationToken cancellationToken = default)
         {
             var skip = (page - 1) * limit;
-            var expenses = await _expenseRepository.GetPagedAsync(user, skip, limit, search);
-            var totalItems = await _expenseRepository.CountAsync(user, search);
+            var expenses = await _expenseRepository.GetPagedAsync(user, skip, limit, search, cancellationToken);
+            var totalItems = await _expenseRepository.CountAsync(user, search, cancellationToken);
 
-            var expenseDtos = expenses.Select(e => new ExpenseDto
-            {
-                Id = e.Id,
-                Title = e.Title,
-                Amount = e.Amount,
-                ExpenseDate = e.ExpenseDate,
-                Note = e.Note,
-                CategoryId = e.Category.Id,
-                CategoryName = e.Category.Name,
-                Username = e.User.Username
-            }).ToList();
+            // Already projected to ExpenseDto by repository
+            var expenseDtos = expenses;
 
             return new PaginatedResponse<ExpenseDto>(expenseDtos, page, limit, totalItems);
         }
 
-        public async Task<ExpenseDto> CreateExpenseAsync(Expense dto)
+        public async Task<ExpenseDto> CreateExpenseAsync(ExpenseCreateDto dto, int userId, CancellationToken cancellationToken = default)
         {
-            var userExists = await _expenseRepository.UserExistsAsync(dto.UserId);
+            // validate user existence
+            var userExists = await _expenseRepository.UserExistsAsync(userId, cancellationToken);
             if (!userExists)
             {
-                _logger.LogWarning("User with ID {UserId} does not exist.", dto.UserId);
-                throw new ArgumentException($"User with ID {dto.UserId} does not exist.");
+                _logger.LogWarning("User with ID {UserId} does not exist.", userId);
+                throw new ArgumentException($"User with ID {userId} does not exist.");
             }
 
-            var categoryExists = await _expenseRepository.CategoryExistsAsync(dto.CategoryId);
+            // validate category
+            var categoryExists = await _expenseRepository.CategoryExistsAsync(dto.CategoryId, userId, cancellationToken);
             if (!categoryExists)
             {
                 _logger.LogWarning("Category with ID {CategoryId} does not exist.", dto.CategoryId);
                 throw new ArgumentException($"Category with ID {dto.CategoryId} does not exist.");
             }
-            
-            await _expenseRepository.AddAsync(dto);
-            await _expenseRepository.SaveAsync();
-            
-            var created = await _expenseRepository.GetByIdAsync(dto.Id);
 
-            _logger.LogInformation("Expense created successfully: {ExpenseId} for user {UserId}", created.Id, dto.UserId);
+            var entity = _mapper.Map<Models.Expense>(dto);
+            entity.UserId = userId;
 
-            return new ExpenseDto
-            {
-                Id = created.Id,
-                Title = created.Title,
-                Amount = created.Amount,
-                ExpenseDate = created.ExpenseDate,
-                Note = created.Note,
-                CategoryName = created.Category.Name,
-                Username = created.User.Username
-            };
+            var createdEntity = await _expenseRepository.AddAsync(entity, cancellationToken);
+            await _expenseRepository.SaveAsync(cancellationToken);
+            var created = await _expenseRepository.GetByIdAsync(createdEntity.Id, cancellationToken);
+
+            _logger.LogInformation("Expense created successfully: {ExpenseId} for user {UserId}", created.Id, created.UserId);
+
+            return _mapper.Map<ExpenseDto>(created);
 
         }
 
-        public async Task<ExpenseDto> UpdateExpenseAsync (int id, Expense dto)
-        {
-            var isSameUser = await _expenseRepository.IsSameUserAsync(id, dto.UserId);
-
-            if (!isSameUser)
-            {
-                throw new ArgumentException($"Expense with ID {id} does not belong to user with ID {dto.UserId}.");
-            }
-
-            await _expenseRepository.EditByIdAsync(id, dto);
-            await _expenseRepository.SaveAsync();
-
-            var updated = await _expenseRepository.GetByIdAsync(id);
-
-            return new ExpenseDto
-            {
-                Id = updated.Id,
-                Title = updated.Title,
-                Amount = updated.Amount,
-                ExpenseDate = updated.ExpenseDate,
-                Note = updated.Note,
-                CategoryName = updated.Category.Name,
-                Username = updated.User.Username
-            };
-        }
-
-        public async Task<int> DeleteExpenseAsync (int id, int userId)
-        {
-            var isSameUser = await _expenseRepository.IsSameUserAsync(id, userId);
+        public async Task<ExpenseDto> UpdateExpenseAsync (int id, ExpenseUpdateDto dto, int userId, CancellationToken cancellationToken = default)
+         {
+            var isSameUser = await _expenseRepository.IsSameUserAsync(id, userId, cancellationToken);
 
             if (!isSameUser)
             {
                 throw new ArgumentException($"Expense with ID {id} does not belong to user with ID {userId}.");
             }
-            await _expenseRepository.DeleteAsync(id);
-            await _expenseRepository.SaveAsync();
+
+            var categoryExists = await _expenseRepository.CategoryExistsAsync(dto.CategoryId, userId, cancellationToken);
+            if (!categoryExists)
+            {
+                _logger.LogWarning("Category with ID {CategoryId} does not exist.", dto.CategoryId);
+                throw new ArgumentException($"Category with ID {dto.CategoryId} does not exist.");
+            }
+
+            var entity = _mapper.Map<Models.Expense>(dto);
+            entity.Id = id;
+            entity.UserId = userId;
+
+            await _expenseRepository.EditByIdAsync(id, entity, cancellationToken);
+            await _expenseRepository.SaveAsync(cancellationToken);
+
+            var updated = await _expenseRepository.GetByIdAsync(id, cancellationToken);
+
+            return _mapper.Map<ExpenseDto>(updated);
+         }
+
+        public async Task<int> DeleteExpenseAsync (int id, int userId, CancellationToken cancellationToken = default)
+        {
+            var isSameUser = await _expenseRepository.IsSameUserAsync(id, userId, cancellationToken);
+
+            if (!isSameUser)
+            {
+                throw new ArgumentException($"Expense with ID {id} does not belong to user with ID {userId}.");
+            }
+            await _expenseRepository.DeleteAsync(id, cancellationToken);
+            await _expenseRepository.SaveAsync(cancellationToken);
 
             return id;
+        }
+
+        public async Task<ExpenseDto> GetExpenseByIdAsync(int id, int userId, CancellationToken cancellationToken = default)
+        {
+            var expense = await _expenseRepository.GetByIdAsync(id, cancellationToken);
+            if (expense == null || expense.UserId != userId)
+                return null;
+            return _mapper.Map<ExpenseDto>(expense);
         }
 
 

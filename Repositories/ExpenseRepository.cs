@@ -4,87 +4,68 @@ using ExpenseTracker.Models;
 using ExpenseTracker.Repositories.Interfaces;
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using AutoMapper.QueryableExtensions;
+using AutoMapper;
+using ExpenseTracker.DTOs.ExpenseDtos;
 
 namespace ExpenseTracker.Repositories
 {
     public class ExpenseRepository : IExpenseRepository
     {
         private readonly AppDbContext _context;
-        public ExpenseRepository(AppDbContext context) => _context = context;
+        private readonly IMapper _mapper;
 
-        public async Task<List<Expense>> GetPagedAsync(int user, int skip, int take, string? search = null)
+        public ExpenseRepository(AppDbContext context, IMapper mapper) => (_context, _mapper) = (context, mapper);
+
+        public async Task<List<ExpenseDto>> GetPagedAsync(int user, int skip, int take, string? search = null, CancellationToken cancellationToken = default)
         {
-            // 1. Base query: Filter only by User ID in the database.
             var query = _context.Expenses
-                .Include(e => e.Category)
-                .Include(e => e.User)
+                .AsNoTracking()
                 .Where(e => e.UserId == user)
-                .OrderByDescending(e => e.CreatedAt); // Still good to order in DB for consistency
+                .OrderByDescending(e => e.CreatedAt)
+                .ProjectTo<ExpenseDto>(_mapper.ConfigurationProvider);
 
-            // 2. Fetch ALL relevant user's expenses into memory.
-            //    No 'search' conditions are applied to the DB query here.
-            var results = await query.ToListAsync();
-
-            // 3. Perform ALL search filtering in memory on the 'results' list.
             if (!string.IsNullOrEmpty(search))
             {
-                var culture = new CultureInfo("id-ID"); // Ensure correct culture
-
-                results = results.Where(e =>
-                    // Apply all your search conditions here, including the date formatting
-                    e.Amount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    e.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    e.Note.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    e.Amount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    e.Category.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    // This is the key line that will catch "Juli" for dates
-                    e.ExpenseDate.ToString("dd MMMM yyyy", culture) // Use "dd MMMM yyyy" or similar if you fixed it
-                        .Contains(search, StringComparison.OrdinalIgnoreCase)
-                ).ToList();
+                // Apply search filters in DB using simple searchable fields
+                search = search.ToLower();
+                query = query.Where(e =>
+                    e.Title.ToLower().Contains(search) ||
+                    (e.Note != null && e.Note.ToLower().Contains(search)) ||
+                    e.CategoryName.ToLower().Contains(search) ||
+                    e.Amount.ToString().Contains(search));
             }
 
-            // 4. Apply pagination to the fully filtered in-memory list.
-            return results.Skip(skip).Take(take).ToList();
+            return await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
         }
 
-        public async Task<int> CountAsync(int userId, string? search = null)
+        public async Task<int> CountAsync(int userId, string? search = null, CancellationToken cancellationToken = default)
         {
-            // 1. Base query: Filter only by User ID in the database.
             var query = _context.Expenses
-                .Include(e => e.Category)
-                .Where(e => e.UserId == userId); // No search conditions here for DB
+                .AsNoTracking()
+                .Where(e => e.UserId == userId);
 
-            // 2. Fetch ALL relevant user's expenses into memory.
-            var results = await query.ToListAsync();
-
-            // 3. Perform ALL search filtering in memory.
             if (!string.IsNullOrEmpty(search))
             {
-                var culture = new CultureInfo("id-ID");
-
-                results = results.Where(e =>
-                    e.Amount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    e.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    e.Note.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    e.Amount.ToString().Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    e.Category.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                    e.ExpenseDate.ToString("dd MMMM yyyy", culture) // Use "dd MMMM yyyy" or similar if you fixed it
-                        .Contains(search, StringComparison.OrdinalIgnoreCase)
-                ).ToList();
+                search = search.ToLower();
+                query = query.Where(e =>
+                    e.Title.ToLower().Contains(search) ||
+                    (e.Note != null && e.Note.ToLower().Contains(search)) ||
+                    e.Category!.Name.ToLower().Contains(search) ||
+                    e.Amount.ToString().Contains(search));
             }
 
-            // 4. Return the count of the fully filtered in-memory list.
-            return results.Count;
+            return await query.CountAsync(cancellationToken);
         }
 
-        public async Task<Expense> GetByIdAsync(int id)
+        public async Task<Expense> GetByIdAsync(int id, CancellationToken cancellationToken = default)
         {
-            return await _context.Expenses.Include(e => e.Category).Include(e => e.User).FirstOrDefaultAsync(e => e.Id == id);
+            return await _context.Expenses.Include(e => e.Category).Include(e => e.User).FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
         }
 
-        public async Task<Expense> EditByIdAsync(int Id, Expense expense)
+        public async Task<Expense> EditByIdAsync(int Id, Expense expense, CancellationToken cancellationToken = default)
         {
-            var existingExpense = await GetByIdAsync(Id);
+            var existingExpense = await GetByIdAsync(Id, cancellationToken);
             if (existingExpense == null)
             {
                 throw new ArgumentException("Expense not found");
@@ -98,46 +79,43 @@ namespace ExpenseTracker.Repositories
             return existingExpense;
         }
 
-        public async Task AddAsync(Expense expen)
+        public async Task<Expense> AddAsync(Expense expen, CancellationToken cancellationToken = default)
         {
-            await _context.Expenses.AddAsync(expen);
+            var entity = (await _context.Expenses.AddAsync(expen, cancellationToken)).Entity;
+            return entity;
         }
 
-        public async Task SaveAsync()
+        public async Task SaveAsync(CancellationToken cancellationToken = default)
         {
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task<bool> UserExistsAsync(int userId)
+        public async Task<bool> UserExistsAsync(int userId, CancellationToken cancellationToken = default)
         {
-            return await _context.Users.AnyAsync(u => u.Id == userId);
+            return await _context.Users.AnyAsync(u => u.Id == userId, cancellationToken);
         }
 
-        public async Task<bool> CategoryExistsAsync(int categoryId)
+        public async Task<bool> CategoryExistsAsync(int categoryId, int userId, CancellationToken cancellationToken = default)
         {
-            return await _context.Categories.AnyAsync(c => c.Id == categoryId);
+            return await _context.Categories.AnyAsync(
+                    c => c.Id == categoryId && (c.UserId == null || c.UserId == userId) && c.IsActive == true, cancellationToken);
         }
 
-        public async Task<bool> IsSameUserAsync(int ExpenseId, int userId)
+        public async Task<bool> IsSameUserAsync(int ExpenseId, int userId, CancellationToken cancellationToken = default)
         {
-            var expense = await _context.Expenses.FindAsync(ExpenseId);
+            var expense = await _context.Expenses.FindAsync(new object[] { ExpenseId }, cancellationToken);
 
             if (expense == null)
             {
                 throw new ArgumentException("Expense not found");
             }
 
-            if(expense.UserId != userId)
-            {
-                return false;
-            }
-
-            return true;
+            return expense.UserId == userId;
         }
 
-        public async Task DeleteAsync (int id)
+        public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
         {
-            var expense = await GetByIdAsync(id);
+            var expense = await GetByIdAsync(id, cancellationToken);
 
             if (expense == null)
             {
@@ -145,11 +123,11 @@ namespace ExpenseTracker.Repositories
             }
 
             _context.Expenses.Remove(expense);
-            await SaveAsync();
+            await SaveAsync(cancellationToken);
         }
 
         // reports
-        public async Task<List<Expense>> GetExpensesByUserAndMonthAsync(int userId, int month, int year, int skip, int take)
+        public async Task<List<Expense>> GetExpensesByUserAndMonthAsync(int userId, int month, int year, int skip, int take, CancellationToken cancellationToken = default)
         {
             return await _context.Expenses
                 .Include(e => e.Category)
@@ -158,12 +136,12 @@ namespace ExpenseTracker.Repositories
                         e.ExpenseDate.Year == year)
                 .Skip(skip)
                 .Take(take)
-                .ToListAsync();
+                .ToListAsync(cancellationToken);
         }
 
-        public async Task<int> CountReportAsync(int userId, int month, int year)
+        public async Task<int> CountReportAsync(int userId, int month, int year, CancellationToken cancellationToken = default)
         {
-            return await _context.Expenses.CountAsync(e => e.UserId == userId && e.ExpenseDate.Month == month && e.ExpenseDate.Year == year);
+            return await _context.Expenses.CountAsync(e => e.UserId == userId && e.ExpenseDate.Month == month && e.ExpenseDate.Year == year, cancellationToken);
         }
     }
 }
