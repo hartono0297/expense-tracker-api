@@ -1,0 +1,92 @@
+# Ignore Visual Studio temporary files, build results, and
+# user-specific files
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build results
+bin/
+obj/
+
+# NuGet
+*.nupkg
+.packages/
+.nuget/
+
+# Visual Studio Code settings
+.vscode/
+
+# Rider
+.idea/
+*.sln.iml
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# IIS Express
+/.vs/ServiceProfiles/
+
+# User secrets
+secrets.json
+secrets/*.json
+
+# Publish output
+publish/
+
+# logs
+*.log
+Logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# dotnet core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# EF Core model snapshot build artifacts
+**/Migrations/*Snapshot.cs
+
+# Test results
+TestResults/
+*.trx
+
+# Coverage
+coverage*
+*.coverage
+*.coveragexml
+
+# Docker
+docker-compose.override.yml
+**/Dockerfile*
+
+# Rider local settings
+.idea/
+
+# Local envs
+.env
+.env.*
+
+# Ignore appsettings secrets
+appsettings.Development.json
+
+# Node
+node_modules/
+
+# Backup files
+*.bak
+*.swp
+
+# Optional: Rider caches
+.idea/
+*.idea/
+
+# End of file

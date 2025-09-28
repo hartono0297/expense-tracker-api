@@ -1,11 +1,11 @@
 ﻿using ExpenseTracker.DTOs.CategoryDtos;
+using ExpenseTracker.Extensions;
 using ExpenseTracker.Models;
 using ExpenseTracker.Models.Responses;
 using ExpenseTracker.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Data.Common;
-using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 
 namespace ExpenseTracker.Controllers
 {
@@ -24,129 +24,77 @@ namespace ExpenseTracker.Controllers
         }
 
         [HttpGet("paging")]
-        public async Task<ActionResult<ApiResponse<PaginatedResponse<CategoryPagingDto>>>> GetCategoriesAsync(int page = 1, int limit = 5, string? search = null)
+        public async Task<ActionResult<ApiResponse<PaginatedResponse<CategoryPagingDto>>>> GetCategoriesAsync([FromQuery] int page = 1, [FromQuery] int limit = 5, [FromQuery] string? search = null, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            if (!User.TryGetUserId(out var userId))
+                return Unauthorized(ApiResponse<PaginatedResponse<CategoryPagingDto>>.Fail("User is not authorized"));
 
-                var data = await _categoryService.PagingCategoriesAsync(userId, page, limit, search);
-
-                return Ok(new ApiResponse<PaginatedResponse<CategoryPagingDto>>(data));
-            }
-            catch (DbException dbEx)
-            {
-                _logger.LogError(dbEx, "Database error occurred while fetching categories");
-                return BadRequest(new ApiResponse<PaginatedResponse<CategoryPagingDto>>("Database error occurred"));
-            }
+            var data = await _categoryService.PagingCategoriesAsync(userId, page, limit, search, cancellationToken);
+            return Ok(new ApiResponse<PaginatedResponse<CategoryPagingDto>>(data));
         }
 
         [HttpGet]
-        public async Task<ApiResponse<List<CategoryDto>>> GetAllCategoriesAsync(bool isActive = true)
+        public async Task<ActionResult<ApiResponse<List<CategoryDto>>>> GetAllCategoriesAsync([FromQuery] bool isActive = true, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-                
-                var categories = await _categoryService.GetAllCategoriesAsync(userId, isActive);
-                return new ApiResponse<List<CategoryDto>>(categories);
-            }
-            catch (DbException dbEx)
-            {
-                _logger.LogError(dbEx, "Database error occurred while fetching categories");
-                return new ApiResponse<List<CategoryDto>>("Database error occurred");
-            }   
+            if (!User.TryGetUserId(out var userId))
+                return Unauthorized(ApiResponse<List<CategoryDto>>.Fail("User is not authorized"));
+
+            var categories = await _categoryService.GetAllCategoriesAsync(userId, isActive, cancellationToken);
+            return Ok(new ApiResponse<List<CategoryDto>>(categories));
         }
-        
+
+        [HttpGet("{id}", Name = "GetCategoryById")]
+        public async Task<ActionResult<ApiResponse<CategoryDto>>> GetCategoryByIdAsync(int id, CancellationToken cancellationToken = default)
+        {
+            if (!User.TryGetUserId(out var userId))
+                return Unauthorized(ApiResponse<CategoryDto>.Fail("User is not authorized"));
+
+            var category = await _categoryService.GetCategoryByIdAsync(id, cancellationToken);
+            if (category == null)
+                return NotFound(ApiResponse<CategoryDto>.Fail("Category not found"));
+
+            return Ok(new ApiResponse<CategoryDto>(category));
+        }
+
         [HttpPost]
-        public async Task<ApiResponse<CategoryDto>> CreateCategoryAsync (CategoryCreateDto dto)
+        public async Task<ActionResult<ApiResponse<CategoryDto>>> CreateCategoryAsync([FromBody] CategoryCreateDto dto, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            if (!User.TryGetUserId(out var userId))
+                return Unauthorized(ApiResponse<CategoryDto>.Fail("User is not authorized"));
 
-                var category = await _categoryService.CreateCategoryAsync(dto, userId);
-                return new ApiResponse<CategoryDto>(category, "category created");
-            }
-            catch (DbException dbEx)
-            {
-                _logger.LogError(dbEx, "Database error occurred while creating category");
-                return new ApiResponse<CategoryDto>("Database error occurred");
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogError(ex, "Error occurred while creating category");
-                return new ApiResponse<CategoryDto>(ex.Message);
-            }
+            var category = await _categoryService.CreateCategoryAsync(dto, userId, cancellationToken);
+            // Return 201 with location header
+            return CreatedAtAction(nameof(GetCategoryByIdAsync), new { id = category.Id }, new ApiResponse<CategoryDto>(category, "Category created"));
         }
-       
+
         [HttpPut("{id}")]
-        public async Task<ApiResponse<CategoryDto>> UpdateCategoryAsync (int id, CategoryUpdateDto dto)
+        public async Task<ActionResult<ApiResponse<CategoryDto>>> UpdateCategoryAsync(int id, [FromBody] CategoryUpdateDto dto, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            if (!User.TryGetUserId(out var userId))
+                return Unauthorized(ApiResponse<CategoryDto>.Fail("User is not authorized"));
 
-                var update = await _categoryService.UpdateCategoryAsync(id, userId, dto);
-                return ApiResponse<CategoryDto>.SuccessResponse(update, "category updated");
-                //return new ApiResponse<CategoryDto>(update, "category updated");
-            }
-            catch (DbException dbEx)
-            {
-                _logger.LogError(dbEx, "Database error occurred while creating category");
-                //return new ApiResponse<CategoryDto>("Database error occurred");
-                return ApiResponse<CategoryDto>.Fail("Database error occurred while updating category");
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogError(ex, "Error occurred while updating category");
-                //return new ApiResponse<CategoryDto>(ex.Message);
-                return ApiResponse<CategoryDto>.Fail(ex.Message);
-            }
+            var update = await _categoryService.UpdateCategoryAsync(id, userId, dto, cancellationToken);
+            return Ok(new ApiResponse<CategoryDto>(update, "Category updated"));
         }
-        
-        [HttpPut("active/{id}")]
-        public async Task<ApiResponse<int>> ToggleActiveCategoryAsync (int id)
-        {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
 
-                await _categoryService.ToggleActiveCategoryAsync(id, userId);
-                return ApiResponse<int>.SuccessResponse(id, "category deleted");
-            }
-            catch (DbException dbEx)
-            {
-                _logger.LogError(dbEx, "Database error occurred while deleting category");
-                return ApiResponse<int>.Fail("Database error occurred while deleting category");
-            }
-            catch (ArgumentException ex)
-            { 
-                _logger.LogError(ex, "Error occurred while toggling category");
-                return ApiResponse<int>.Fail(ex.Message);
-            }
+        [HttpPut("active/{id}")]
+        public async Task<ActionResult<ApiResponse<int>>> ToggleActiveCategoryAsync(int id, CancellationToken cancellationToken = default)
+        {
+            if (!User.TryGetUserId(out var userId))
+                return Unauthorized(ApiResponse<int>.Fail("User is not authorized"));
+
+            var toggleId = await _categoryService.ToggleActiveCategoryAsync(id, userId, cancellationToken);
+            return Ok(new ApiResponse<int>(toggleId, "category active status toggled"));
         }
 
         [HttpDelete("{id}")]
-        public async Task<ApiResponse<int>> DeleteCategoryAsync(int id)
+        public async Task<ActionResult<ApiResponse<int>>> DeleteCategoryAsync(int id, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+            if (!User.TryGetUserId(out var userId))
+                return Unauthorized(ApiResponse<int>.Fail("User is not authorized"));
 
-                await _categoryService.DeleteCategoryAsync(id, userId);
-                return ApiResponse<int>.SuccessResponse(id, "category deleted");
-            }
-            catch (DbException dbEx)
-            {
-                _logger.LogError(dbEx, "Database error occurred while deleting category");
-                return ApiResponse<int>.Fail("Database error occurred while deleting category");
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogError(ex, "Error occurred while deleting category");
-                return ApiResponse<int>.Fail(ex.Message);
-            }
+            var deletedId = await _categoryService.DeleteCategoryAsync(id, userId, cancellationToken);
+            return Ok(new ApiResponse<int>(deletedId, "category deleted"));
         }
     }
 }

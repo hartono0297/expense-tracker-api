@@ -1,9 +1,10 @@
+using Microsoft.Extensions.DependencyInjection;
 using ExpenseTracker.Repositories.Interfaces;
 using ExpenseTracker.Repositories;
 using ExpenseTracker.Services.Interfaces;
 using ExpenseTracker.Services;
 
-namespace ExpenseTracker.Helpers.Extensions
+namespace ExpenseTracker.Extensions
 {
     public static class ServiceCollectionExtensions
     {

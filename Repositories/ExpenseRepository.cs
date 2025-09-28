@@ -19,24 +19,27 @@ namespace ExpenseTracker.Repositories
 
         public async Task<List<ExpenseDto>> GetPagedAsync(int user, int skip, int take, string? search = null, CancellationToken cancellationToken = default)
         {
-            var query = _context.Expenses
+            // Start with entity query so we can filter using entity properties (Category, User)
+            var entityQuery = _context.Expenses
                 .AsNoTracking()
-                .Where(e => e.UserId == user)
+                .Where(e => e.UserId == user);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var trimmed = search.Trim();
+                entityQuery = entityQuery.Where(e =>
+                    e.Title.Contains(trimmed) ||
+                    (e.Note != null && e.Note.Contains(trimmed)) ||
+                    (e.Category != null && e.Category.Name.Contains(trimmed)) ||
+                    e.Amount.ToString().Contains(trimmed)
+                );
+            }
+
+            var projected = entityQuery
                 .OrderByDescending(e => e.CreatedAt)
                 .ProjectTo<ExpenseDto>(_mapper.ConfigurationProvider);
 
-            if (!string.IsNullOrEmpty(search))
-            {
-                // Apply search filters in DB using simple searchable fields
-                search = search.ToLower();
-                query = query.Where(e =>
-                    e.Title.ToLower().Contains(search) ||
-                    (e.Note != null && e.Note.ToLower().Contains(search)) ||
-                    e.CategoryName.ToLower().Contains(search) ||
-                    e.Amount.ToString().Contains(search));
-            }
-
-            return await query.Skip(skip).Take(take).ToListAsync(cancellationToken);
+            return await projected.Skip(skip).Take(take).ToListAsync(cancellationToken);
         }
 
         public async Task<int> CountAsync(int userId, string? search = null, CancellationToken cancellationToken = default)
@@ -45,14 +48,15 @@ namespace ExpenseTracker.Repositories
                 .AsNoTracking()
                 .Where(e => e.UserId == userId);
 
-            if (!string.IsNullOrEmpty(search))
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                search = search.ToLower();
+                var trimmed = search.Trim();
                 query = query.Where(e =>
-                    e.Title.ToLower().Contains(search) ||
-                    (e.Note != null && e.Note.ToLower().Contains(search)) ||
-                    e.Category!.Name.ToLower().Contains(search) ||
-                    e.Amount.ToString().Contains(search));
+                    e.Title.Contains(trimmed) ||
+                    (e.Note != null && e.Note.Contains(trimmed)) ||
+                    (e.Category != null && e.Category.Name.Contains(trimmed)) ||
+                    e.Amount.ToString().Contains(trimmed)
+                );
             }
 
             return await query.CountAsync(cancellationToken);

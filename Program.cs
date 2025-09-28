@@ -10,7 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using ExpenseTracker.Middlewares;
-using ExpenseTracker.Helpers.Extensions;
+using ExpenseTracker.Extensions;
 using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.Extensions.Logging;
