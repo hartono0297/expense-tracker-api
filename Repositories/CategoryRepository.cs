@@ -5,8 +5,6 @@ using ExpenseTracker.DTOs.CategoryDtos;
 using ExpenseTracker.Models;
 using ExpenseTracker.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System.Formats.Asn1;
-using System.Globalization;
 
 namespace ExpenseTracker.Repositories
 {
@@ -23,18 +21,16 @@ namespace ExpenseTracker.Repositories
 
         public async Task<List<Category>> PagingCategoryAsync(int user, int skip, int take, string? search = null, CancellationToken cancellationToken = default)
         {
-            // Build the base query for the given user
+            // Include global categories (UserId == null) in results
             var query = _context.Categories
-                .Where(c => c.UserId == user);
+                .Where(c => c.UserId == null || c.UserId == user);
 
-            // Apply search filter at database level if provided
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var trimmed = search.Trim();
                 query = query.Where(c => c.Name.Contains(trimmed));
             }
 
-            // Apply ordering and pagination in the database
             var results = await query
                 .OrderByDescending(c => c.Name)
                 .Skip(skip)
@@ -47,7 +43,7 @@ namespace ExpenseTracker.Repositories
         public async Task<int> CountAsync(int userId, string? search = null, CancellationToken cancellationToken = default)
         {
             var query = _context.Categories
-                .Where(c => c.UserId == userId);
+                .Where(c => c.UserId == null || c.UserId == userId);
 
             if (!string.IsNullOrWhiteSpace(search))
             {
@@ -60,71 +56,102 @@ namespace ExpenseTracker.Repositories
 
         public async Task<List<Category>> GetAllCategoriesAsync(int user, bool isActive = true, CancellationToken cancellationToken = default)
         {
-            if (isActive == true)
-            { 
-            return await _context.Categories.Where(c => c.UserId == null || c.UserId == user && c.IsActive == isActive).ToListAsync();
-            }
-            else
-            {
-            return await _context.Categories.Where(c => c.UserId == null || c.UserId == user).ToListAsync();
-            }
+            var query = _context.Categories.Where(c => c.UserId == null || c.UserId == user);
+
+            if (isActive)
+                query = query.Where(c => c.IsActive == true);
+
+            return await query.ToListAsync(cancellationToken);
         }
 
         public async Task<Category> AddCategoryAsync(Category cate, int user, CancellationToken cancellationToken = default)
-        {
-            cate.UserId = user;            
-            _context.Categories.Add(cate);
-            await _context.SaveChangesAsync();
+        {            
+            await _context.Categories.AddAsync(cate, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
 
             return cate;
         }
 
-        public async Task<Category> GetCategoryByIdAsync (int id, CancellationToken cancellationToken = default)
+        public async Task<Category> GetCategoryByIdAsync(int id, CancellationToken cancellationToken = default)
         {
-            return await _context.Categories.FirstOrDefaultAsync(c => c.Id == id);
+            return await _context.Categories.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
         }
 
-        public async Task<Category> EditCategoryByIdAsync (int id, Category category, CancellationToken cancellationToken = default)
-        {                                  
-            _context.Categories.Update(category);
-            await _context.SaveChangesAsync();
-            return category;
+        public async Task<Category> EditCategoryByIdAsync(int id, Category category, CancellationToken cancellationToken = default)
+        {
+            var existing = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+            if (existing == null)
+                throw new ArgumentException("Category not found");
+
+            // update allowed fields
+            existing.Name = category.Name;
+            existing.IsActive = category.IsActive;
+            // keep UserId and Id intact
+
+            _context.Categories.Update(existing);
+            await _context.SaveChangesAsync(cancellationToken);
+            return existing;
         }
 
         public async Task ToggleActiveCategoryAsync(int id, int user, CancellationToken cancellationToken = default)
         {
-            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == user);
+            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == user, cancellationToken);
+            if (category == null)
+                throw new ArgumentException("Category not found");
+
             category.IsActive = !category.IsActive;
             _context.Categories.Update(category);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
 
         public async Task DeleteCategoryByIdAsync(int id, int user, CancellationToken cancellationToken = default)
         {
-            var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == user);            
+            var strategy = _context.Database.CreateExecutionStrategy();
 
-            var expenses = await _context.Expenses.Where(e => e.CategoryId == id && e.UserId == user).ToListAsync();
-            
-            if (expenses.Count > 0) { 
-                foreach (var expense in expenses)
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+                var category = await _context.Categories.FirstOrDefaultAsync(c => c.Id == id && c.UserId == user, cancellationToken);
+                if (category == null)
+                    throw new ArgumentException("Category not found");
+
+                // Find or create a global "Uncategorized" default category
+                var defaultCategory = await _context.Categories.FirstOrDefaultAsync(c => c.UserId == null && c.Name == "Uncategorized", cancellationToken);
+                if (defaultCategory == null)
                 {
-                    expense.CategoryId = 1; // Assuming 9 is the default category ID for uncategorized expenses
+                    defaultCategory = new Category { Name = "Uncategorized", UserId = null, IsActive = true };
+                    await _context.Categories.AddAsync(defaultCategory, cancellationToken);
+                    await _context.SaveChangesAsync(cancellationToken);
                 }
-            }
 
-            _context.Categories.Remove(category);
-            
-            await _context.SaveChangesAsync();
+                var expenses = await _context.Expenses.Where(e => e.CategoryId == id && e.UserId == user).ToListAsync(cancellationToken);
+                if (expenses.Count > 0)
+                {
+                    foreach (var expense in expenses)
+                    {
+                        expense.CategoryId = defaultCategory.Id;
+                        _context.Expenses.Update(expense);
+                    }
+                    await _context.SaveChangesAsync(cancellationToken);
+                }
+
+                _context.Categories.Remove(category);
+                await _context.SaveChangesAsync(cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+            });
         }
-        
-        public async Task<bool> CategoryExistsAsync (string name, int user, int? excludeId = null, CancellationToken cancellationToken = default)
+
+        public async Task<bool> CategoryExistsAsync(string name, int user, int? excludeId = null, CancellationToken cancellationToken = default)
         {
-            return await _context.Categories.AnyAsync(c => c.Name == name && c.UserId == user && (!excludeId.HasValue || c.Id != excludeId.Value) );
+            var normalized = name.Trim().ToLower();
+            return await _context.Categories.AnyAsync(c => c.Name.ToLower() == normalized && c.UserId == user && (!excludeId.HasValue || c.Id != excludeId.Value), cancellationToken);
         }
-        
-        public async Task<bool> IdCategoryExistsAsync (int id, int user, CancellationToken cancellationToken = default)
+
+        public async Task<bool> IdCategoryExistsAsync(int id, int user, CancellationToken cancellationToken = default)
         {
-            return await _context.Categories.AnyAsync(c => c.Id == id && c.UserId == user);
+            return await _context.Categories.AnyAsync(c => c.Id == id && c.UserId == user, cancellationToken);
         }
 
     }

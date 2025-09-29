@@ -31,7 +31,7 @@ namespace ExpenseTracker.Controllers
                 return Unauthorized(ApiResponse<PaginatedResponse<ExpenseDto>>.Fail("User is not authorized"));
 
             var data = await _expenseService.GetExpensesAsync(userId, page, limit, search, cancellationToken);
-            return Ok(new ApiResponse<PaginatedResponse<ExpenseDto>>(data));
+            return Ok(new ApiResponse<PaginatedResponse<ExpenseDto>>(data, "Success"));
         }
 
         [HttpGet("{id}")]
@@ -44,7 +44,7 @@ namespace ExpenseTracker.Controllers
             if (expense == null)
                 return NotFound(ApiResponse<ExpenseDto>.Fail("Expense not found"));
 
-            return Ok(new ApiResponse<ExpenseDto>(expense, "success"));
+            return Ok(new ApiResponse<ExpenseDto>(expense, "Success"));
         }
 
         [HttpPost]

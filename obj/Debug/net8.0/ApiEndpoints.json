@@ -27,7 +27,7 @@
   },
   {
     "ContainingType": "ExpenseTracker.Controllers.CategoryController",
-    "Method": "GetAllCategoriesAsync",
+    "Method": "GetAllCategories",
     "RelativePath": "api/Category",
     "HttpMethod": "GET",
     "IsController": true,
@@ -53,7 +53,7 @@
   },
   {
     "ContainingType": "ExpenseTracker.Controllers.CategoryController",
-    "Method": "CreateCategoryAsync",
+    "Method": "CreateCategory",
     "RelativePath": "api/Category",
     "HttpMethod": "POST",
     "IsController": true,
@@ -79,7 +79,33 @@
   },
   {
     "ContainingType": "ExpenseTracker.Controllers.CategoryController",
-    "Method": "UpdateCategoryAsync",
+    "Method": "GetCategoryById",
+    "RelativePath": "api/Category/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "ExpenseTracker.Models.Responses.ApiResponse\u00601[[ExpenseTracker.DTOs.CategoryDtos.CategoryDto, ExpenseTracker, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "ExpenseTracker.Controllers.CategoryController",
+    "Method": "UpdateCategory",
     "RelativePath": "api/Category/{id}",
     "HttpMethod": "PUT",
     "IsController": true,
@@ -110,7 +136,7 @@
   },
   {
     "ContainingType": "ExpenseTracker.Controllers.CategoryController",
-    "Method": "DeleteCategoryAsync",
+    "Method": "DeleteCategory",
     "RelativePath": "api/Category/{id}",
     "HttpMethod": "DELETE",
     "IsController": true,
@@ -136,7 +162,7 @@
   },
   {
     "ContainingType": "ExpenseTracker.Controllers.CategoryController",
-    "Method": "ToggleActiveCategoryAsync",
+    "Method": "ToggleActiveCategory",
     "RelativePath": "api/Category/active/{id}",
     "HttpMethod": "PUT",
     "IsController": true,
@@ -162,7 +188,7 @@
   },
   {
     "ContainingType": "ExpenseTracker.Controllers.CategoryController",
-    "Method": "GetCategoriesAsync",
+    "Method": "GetCategories",
     "RelativePath": "api/Category/paging",
     "HttpMethod": "GET",
     "IsController": true,

@@ -28,10 +28,9 @@ namespace ExpenseTracker.Services
             var expenses = await _expenseRepository.GetPagedAsync(user, skip, limit, search, cancellationToken);
             var totalItems = await _expenseRepository.CountAsync(user, search, cancellationToken);
 
-            // Already projected to ExpenseDto by repository
-            var expenseDtos = expenses;
+            var result = _mapper.Map<List<ExpenseDto>>(expenses);
 
-            return new PaginatedResponse<ExpenseDto>(expenseDtos, page, limit, totalItems);
+            return new PaginatedResponse<ExpenseDto>(result, page, limit, totalItems);
         }
 
         public async Task<ExpenseDto> CreateExpenseAsync(ExpenseCreateDto dto, int userId, CancellationToken cancellationToken = default)

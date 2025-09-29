@@ -17,7 +17,7 @@ namespace ExpenseTracker.Repositories
 
         public ExpenseRepository(AppDbContext context, IMapper mapper) => (_context, _mapper) = (context, mapper);
 
-        public async Task<List<ExpenseDto>> GetPagedAsync(int user, int skip, int take, string? search = null, CancellationToken cancellationToken = default)
+        public async Task<List<Expense>> GetPagedAsync(int user, int skip, int take, string? search = null, CancellationToken cancellationToken = default)
         {
             // Start with entity query so we can filter using entity properties (Category, User)
             var entityQuery = _context.Expenses
@@ -35,11 +35,13 @@ namespace ExpenseTracker.Repositories
                 );
             }
 
-            var projected = entityQuery
+            var result = await entityQuery
                 .OrderByDescending(e => e.CreatedAt)
-                .ProjectTo<ExpenseDto>(_mapper.ConfigurationProvider);
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync(cancellationToken);
 
-            return await projected.Skip(skip).Take(take).ToListAsync(cancellationToken);
+            return result;
         }
 
         public async Task<int> CountAsync(int userId, string? search = null, CancellationToken cancellationToken = default)

@@ -7,7 +7,7 @@ namespace ExpenseTracker.Repositories.Interfaces
 {
     public interface IExpenseRepository
     {
-        Task<List<ExpenseDto>> GetPagedAsync(int user, int skip, int take, string? search = null, CancellationToken cancellationToken = default);
+        Task<List<Expense>> GetPagedAsync(int user, int skip, int take, string? search = null, CancellationToken cancellationToken = default);
         Task<int> CountAsync(int userId, string? search = null, CancellationToken cancellationToken = default);
         Task<Expense> GetByIdAsync(int id, CancellationToken cancellationToken = default);
         Task<Expense> EditByIdAsync(int Id, Expense expense, CancellationToken cancellationToken = default);
