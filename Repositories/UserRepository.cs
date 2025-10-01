@@ -17,71 +17,36 @@ namespace ExpenseTracker.Repositories
         public UserRepository(AppDbContext context) => _context = context;
         private readonly PasswordHasher<User> _hasher = new();
 
-        public async Task<User> GetUserByIdAsync (int id)
+        public async Task<User> GetUserByIdAsync (int id, CancellationToken cancellationToken = default)
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         }
 
-        public async Task<User> GetByUserNameAsync (string username)
+        public async Task<User> GetByUserNameAsync (string username, CancellationToken cancellationToken = default)
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
         }
 
-        public async Task CreateUserAsync(RegisterRequestDto regis)
+        public async Task CreateUserAsync(User user, CancellationToken cancellationToken = default)
         {
-            // Hash and salt the password
-            CreatePasswordHash(regis.Password, out byte[] passwordHash, out byte[] passwordSalt);
-
-            // Create the user object
-            var user = new User
-            {
-                Username = regis.Username,
-                NickName = regis.NickName,
-                Email = regis.Email,
-                PasswordHash = passwordHash,
-                PasswordSalt = passwordSalt,
-                Role = "User", // Default role, can be changed later
-            };
-
             _context.Users.Add(user);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
         
-        public async Task UpdateUserAsync (int id, UserUpdateDto userUpdateDto)
+        public async Task UpdateUserAsync (User user, CancellationToken cancellationToken = default)
         {           
-            var user = await _context.Users.FindAsync(id);
-
-            if (user == null)
-            {
-                throw new ArgumentException("User not found.");
-            }
-
-            if (!string.IsNullOrWhiteSpace(userUpdateDto.Email))
-            {
-                user.Email = userUpdateDto.Email;
-            }
-
-            if (!string.IsNullOrWhiteSpace(userUpdateDto.Password))
-            {
-                // Hash and salt the password
-                CreatePasswordHash(userUpdateDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
-
-                user.PasswordHash = passwordHash;
-                user.PasswordSalt = passwordSalt;
-            }
-
-            if (!string.IsNullOrWhiteSpace(userUpdateDto.NickName))
-            {
-                user.NickName = userUpdateDto.NickName;
-            }
-
-            //_context.Users.Update(user);
-            await _context.SaveChangesAsync();
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync(cancellationToken);
         }   
 
-        public async Task<bool> UserExistsAsync(string username)
+        public async Task<bool> UserExistsAsync(string username, CancellationToken cancellationToken = default)
         {
             return await _context.Users.AnyAsync(u => u.Username == username);
+        }
+
+        public async Task<bool> UserIdExistsAsync(int id, CancellationToken cancellationToken = default)
+        {
+            return await _context.Users.AnyAsync(u => u.Id == id);
         }
 
         public void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)

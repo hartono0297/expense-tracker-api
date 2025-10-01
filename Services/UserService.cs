@@ -1,26 +1,31 @@
-﻿using ExpenseTracker.Controllers;
+﻿using AutoMapper;
+using ExpenseTracker.Controllers;
 using ExpenseTracker.DTOs.RegisterDtos;
 using ExpenseTracker.DTOs.UserDtos;
 using ExpenseTracker.Models;
 using ExpenseTracker.Repositories.Interfaces;
 using ExpenseTracker.Services.Interfaces;
+using System.Text.RegularExpressions;
 
 namespace ExpenseTracker.Services
 {
     public class UserService : IUserService
     {
-        public readonly IUserRepository _userRepository;
-        public readonly ILogger<UserController> _logger;
+        private readonly IUserRepository _userRepository;
+        private readonly ILogger<UserController> _logger;
+        private readonly IMapper _mapper;
         
-        public UserService(IUserRepository userRepository, ILogger<UserController> logger)
+        
+        public UserService(IUserRepository userRepository, ILogger<UserController> logger, IMapper mapper)
         {
             _userRepository = userRepository;
             _logger = logger;
+            _mapper = mapper;
         }
 
-        public async Task<UserResponseDto> GetUserByIdAsync(int id)
+        public async Task<UserResponseDto> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
         {
-            var user = await _userRepository.GetUserByIdAsync(id);
+            var user = await _userRepository.GetUserByIdAsync(id, cancellationToken);
             if (user == null)
             {
                 _logger.LogWarning("User with ID {Id} not found.", id);
@@ -37,23 +42,74 @@ namespace ExpenseTracker.Services
             return userResponse;
         }
 
-        public async Task CreateUserAsync(RegisterRequestDto regis)
+        public async Task<RegisterResponseDto> CreateUserAsync(RegisterRequestDto regis, CancellationToken cancellationToken = default)
         {
-            var existingUser = await _userRepository.UserExistsAsync(regis.Username);
+            var existingUser = await _userRepository.UserExistsAsync(regis.Username, cancellationToken);
 
             if (existingUser == true)
             { 
                 throw new ArgumentException("User already exists");
             }
+            
+            // Hash and salt the password
+            CreatePasswordHash(regis.Password, out byte[] passwordHash, out byte[] passwordSalt);
 
-            await _userRepository.CreateUserAsync(regis);
-            return;
+            var entity = _mapper.Map<User>(regis);
+            entity.PasswordHash = passwordHash;
+            entity.PasswordSalt = passwordSalt;
+            entity.Role = "User"; // Default role, can be changed later
+
+            await _userRepository.CreateUserAsync(entity, cancellationToken);    
+            
+            var user = await _userRepository.GetByUserNameAsync(entity.Username, cancellationToken);
+
+            var mappedUser = _mapper.Map<RegisterResponseDto>(user);
+
+            return mappedUser;
         }
 
-        public async Task UpdateUserAsync (int id, UserUpdateDto userUpdateDto)
+        public async Task<UserResponseDto> UpdateUserAsync (int id, UserUpdateDto userUpdateDto, CancellationToken cancellationToken = default)
         {
-            await _userRepository.UpdateUserAsync(id, userUpdateDto);
-            return;
+            var existingUser = await _userRepository.GetUserByIdAsync(id, cancellationToken);
+
+            if (existingUser == null)
+            {
+                throw new ArgumentException("User id not exists");
+            }
+
+            if (!string.IsNullOrWhiteSpace(userUpdateDto.Email))
+            {
+                existingUser.Email = userUpdateDto.Email;
+            }
+
+            if (!string.IsNullOrWhiteSpace(userUpdateDto.Password))
+            {
+                // Hash and salt the password
+                CreatePasswordHash(userUpdateDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
+
+                existingUser.PasswordHash = passwordHash;
+                existingUser.PasswordSalt = passwordSalt;
+            }
+
+            if (!string.IsNullOrWhiteSpace(userUpdateDto.NickName))
+            {
+                existingUser.NickName = userUpdateDto.NickName;
+            }
+            
+            await _userRepository.UpdateUserAsync(existingUser, cancellationToken);
+                        
+            var mappedUser = _mapper.Map<UserResponseDto>(existingUser);
+
+            return mappedUser;
+        }
+
+        public void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
+        {
+            using (var hmac = new System.Security.Cryptography.HMACSHA512())
+            {
+                passwordSalt = hmac.Key;
+                passwordHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+            }
         }
     }
 }

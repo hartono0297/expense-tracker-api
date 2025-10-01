@@ -449,7 +449,7 @@
     ],
     "ReturnTypes": [
       {
-        "Type": "ExpenseTracker.Models.Responses.ApiResponse\u00601[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "Type": "ExpenseTracker.Models.Responses.ApiResponse\u00601[[ExpenseTracker.DTOs.RegisterDtos.RegisterResponseDto, ExpenseTracker, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
         "MediaTypes": [
           "text/plain",
           "application/json",
@@ -475,7 +475,33 @@
     ],
     "ReturnTypes": [
       {
-        "Type": "ExpenseTracker.Models.Responses.ApiResponse\u00601[[System.String, System.Private.CoreLib, Version=8.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "Type": "ExpenseTracker.Models.Responses.ApiResponse\u00601[[ExpenseTracker.DTOs.UserDtos.UserResponseDto, ExpenseTracker, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "ExpenseTracker.Controllers.UserController",
+    "Method": "GetUserById",
+    "RelativePath": "api/User/{userId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "userId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "ExpenseTracker.Models.Responses.ApiResponse\u00601[[ExpenseTracker.DTOs.UserDtos.UserResponseDto, ExpenseTracker, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
         "MediaTypes": [
           "text/plain",
           "application/json",

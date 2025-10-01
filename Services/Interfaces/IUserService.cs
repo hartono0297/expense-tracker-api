@@ -8,8 +8,8 @@ namespace ExpenseTracker.Services.Interfaces
 {
     public interface IUserService
     {        
-        Task<UserResponseDto> GetUserByIdAsync (int id);
-        Task CreateUserAsync(RegisterRequestDto regis);
-        Task UpdateUserAsync (int id, UserUpdateDto user);
+        Task<UserResponseDto> GetUserByIdAsync (int id, CancellationToken cancellationToken = default);
+        Task<RegisterResponseDto> CreateUserAsync(RegisterRequestDto regis, CancellationToken cancellationToken = default);
+        Task<UserResponseDto> UpdateUserAsync (int id, UserUpdateDto user, CancellationToken cancellationToken = default);
     }
 }

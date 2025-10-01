@@ -6,11 +6,12 @@ namespace ExpenseTracker.Repositories.Interfaces
 {
     public interface IUserRepository
     {
-        Task<User> GetUserByIdAsync(int id);
-        Task<User> GetByUserNameAsync (string username);
-        Task CreateUserAsync(RegisterRequestDto regis);
-        Task UpdateUserAsync(int id, UserUpdateDto user);
-        Task<bool> UserExistsAsync(string username);
+        Task<User> GetUserByIdAsync(int id, CancellationToken cancellationToken = default);
+        Task<User> GetByUserNameAsync (string username, CancellationToken cancellationToken = default);
+        Task CreateUserAsync(User user, CancellationToken cancellationToken = default);
+        Task UpdateUserAsync(User user, CancellationToken cancellationToken = default);
+        Task<bool> UserExistsAsync(string username, CancellationToken cancellationToken = default);
+        Task<bool> UserIdExistsAsync(int id, CancellationToken cancellationToken = default);
         //Task<bool> ValidateUserAsync(string username, string password);
     }
 }

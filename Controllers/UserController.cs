@@ -2,6 +2,7 @@
 using ExpenseTracker.DTOs.ExpenseDtos;
 using ExpenseTracker.DTOs.RegisterDtos;
 using ExpenseTracker.DTOs.UserDtos;
+using ExpenseTracker.Extensions;
 using ExpenseTracker.Models;
 using ExpenseTracker.Models.Responses;
 using ExpenseTracker.Services.Interfaces;
@@ -27,73 +28,53 @@ namespace ExpenseTracker.Controllers
 
         [Authorize]
         [HttpGet] 
-        public async Task<ActionResult<ApiResponse<UserResponseDto>>> GetUserById()
-        {
-            try
-            {
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
-                var user = await _userService.GetUserByIdAsync(userId);
+        public async Task<ActionResult<ApiResponse<UserResponseDto>>> GetUserById(CancellationToken cancellationToken = default)
+        {     
+                if(!User.TryGetUserId(out var userId))
+                    return Unauthorized(ApiResponse<UserResponseDto>.Fail("User is not authorized"));
 
-                return Ok(ApiResponse<UserResponseDto>.SuccessResponse(user, "User found successfully."));
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning(ex, "Validation failed: {Message}", ex.Message);
-                return BadRequest(ApiResponse<UserResponseDto>.Fail(ex.Message));
-            }
-            catch (DbUpdateException dbEx)
-            {
-                _logger.LogWarning(dbEx, "Database error occurred while getting user.");
-                return BadRequest(ApiResponse<UserResponseDto>.Fail("Database error occured"));
-            }
+                var user = await _userService.GetUserByIdAsync(userId, cancellationToken);
+
+                return Ok(ApiResponse<UserResponseDto>.SuccessResponse(user, "User found successfully."));           
+        }
+
+        [Authorize]
+        [HttpGet("{userId:int}")]
+        public async Task<ActionResult<ApiResponse<UserResponseDto>>> GetUserById(int userId, CancellationToken cancellationToken = default)
+        {
+            if (!User.TryGetUserId(out var currentUserId))
+                return Unauthorized(ApiResponse<UserResponseDto>.Fail("User is not authorized"));
+
+            // 🚨 if not admin and not the same user → block
+            if (!User.IsInRole("Admin") && currentUserId != userId)
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    ApiResponse<UserResponseDto>.Fail("Only Admin Allowed or Self Access"));
+
+            var user = await _userService.GetUserByIdAsync(userId, cancellationToken);
+
+            if (user == null)
+                return NotFound(ApiResponse<UserResponseDto>.Fail("User not found"));
+
+            return Ok(ApiResponse<UserResponseDto>.SuccessResponse(user));
         }
 
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<string>>> CreateUser(RegisterRequestDto regis)
-        {         
-            try
-            {
-                await _userService.CreateUserAsync(regis);
-                return Ok(ApiResponse<string>.SuccessResponse("", "User created successfully."));
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning(ex, "Validation failed: {Message}", ex.Message);
-                return BadRequest(ApiResponse<string>.Fail(ex.Message));
-            }
-            catch (DbUpdateException dbEx)
-            {
-                _logger.LogWarning(dbEx, "Database error occurred while creating user.");
-                return BadRequest(ApiResponse<string>.Fail("Database error occured"));
-            }
+        public async Task<ActionResult<ApiResponse<RegisterResponseDto>>> CreateUser(RegisterRequestDto regis, CancellationToken cancellationToken = default)
+        {                  
+               var user =  await _userService.CreateUserAsync(regis);                
+               
+                return CreatedAtAction(nameof(GetUserById), new { UserId = user.Id }, ApiResponse<RegisterResponseDto>.SuccessResponse(user, "User created successfully."));
         }
 
         [Authorize]
         [HttpPut] 
-        public async Task<ActionResult<ApiResponse<string>>> UpdateUser(UserUpdateDto user)
-        {         
-            try
-            {
-                var userIdClaim = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        public async Task<ActionResult<ApiResponse<UserResponseDto>>> UpdateUser(UserUpdateDto user, CancellationToken cancellationToken = default)
+        {
+            if (!User.TryGetUserId(out var userId))
+                return Unauthorized(ApiResponse<UserResponseDto>.Fail("User is not authorized"));
 
-                if (userIdClaim.ToString() == null || !int.TryParse(userIdClaim.ToString(), out var userId))
-                {
-                    return Unauthorized(ApiResponse<string>.Fail("Unauthorized access."));
-                }
-
-                await _userService.UpdateUserAsync(userId, user);
-                return Ok(ApiResponse<string>.SuccessResponse("", "User updated successfully."));
-            }
-            catch (ArgumentException ex)
-            {
-                _logger.LogWarning(ex, "Validation failed: {Message}", ex.Message);                
-                return BadRequest(ApiResponse<string>.Fail(ex.Message));
-            }
-            catch (DbUpdateException dbEx)
-            {
-                _logger.LogWarning(dbEx, "Database error occurred while updating user.");                
-                return BadRequest(ApiResponse<string>.Fail("Database error occured"));
-            }
+            var result = await _userService.UpdateUserAsync(userId, user, cancellationToken);
+                return Ok(ApiResponse<UserResponseDto>.SuccessResponse(result, "User updated successfully."));
         }
     }
 }
