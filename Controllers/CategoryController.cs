@@ -4,8 +4,8 @@ using ExpenseTracker.Models;
 using ExpenseTracker.Models.Responses;
 using ExpenseTracker.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
 namespace ExpenseTracker.Controllers
 {
@@ -62,6 +62,11 @@ namespace ExpenseTracker.Controllers
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized(ApiResponse<CategoryDto>.Fail("User is not authorized"));
 
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<CategoryDto>.Fail("Invalid request data"));
+            }
+
             var category = await _categoryService.CreateCategoryAsync(dto, userId, cancellationToken);
             // Return 201 with location header using action
             return CreatedAtAction(nameof(GetCategoryById), new { id = category.Id }, new ApiResponse<CategoryDto>(category, "Category created"));
@@ -72,6 +77,11 @@ namespace ExpenseTracker.Controllers
         {
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized(ApiResponse<CategoryDto>.Fail("User is not authorized"));
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<CategoryDto>.Fail("Invalid request data"));
+            }
 
             var update = await _categoryService.UpdateCategoryAsync(id, userId, dto, cancellationToken);
             return Ok(new ApiResponse<CategoryDto>(update, "Category updated"));

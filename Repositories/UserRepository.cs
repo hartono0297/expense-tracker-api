@@ -1,13 +1,7 @@
-﻿using Azure.Core;
-using ExpenseTracker.Data;
-using ExpenseTracker.DTOs.AuthDtos;
-using ExpenseTracker.DTOs.RegisterDtos;
-using ExpenseTracker.DTOs.UserDtos;
+﻿using ExpenseTracker.Data;
 using ExpenseTracker.Models;
 using ExpenseTracker.Repositories.Interfaces;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using System.Text.RegularExpressions;
 
 namespace ExpenseTracker.Repositories
 {
@@ -15,16 +9,15 @@ namespace ExpenseTracker.Repositories
     {
         private readonly AppDbContext _context;
         public UserRepository(AppDbContext context) => _context = context;
-        private readonly PasswordHasher<User> _hasher = new();
 
         public async Task<User> GetUserByIdAsync (int id, CancellationToken cancellationToken = default)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+            return await _context.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         }
 
         public async Task<User> GetByUserNameAsync (string username, CancellationToken cancellationToken = default)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+            return await _context.Users.FirstOrDefaultAsync(u => u.Username == username, cancellationToken);
         }
 
         public async Task CreateUserAsync(User user, CancellationToken cancellationToken = default)
@@ -41,12 +34,12 @@ namespace ExpenseTracker.Repositories
 
         public async Task<bool> UserExistsAsync(string username, CancellationToken cancellationToken = default)
         {
-            return await _context.Users.AnyAsync(u => u.Username == username);
+            return await _context.Users.AnyAsync(u => u.Username == username, cancellationToken);
         }
 
         public async Task<bool> UserIdExistsAsync(int id, CancellationToken cancellationToken = default)
         {
-            return await _context.Users.AnyAsync(u => u.Id == id);
+            return await _context.Users.AnyAsync(u => u.Id == id, cancellationToken);
         }
 
         public void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)

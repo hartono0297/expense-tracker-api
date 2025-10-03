@@ -2,6 +2,7 @@
 using ExpenseTracker.Controllers;
 using ExpenseTracker.DTOs.RegisterDtos;
 using ExpenseTracker.DTOs.UserDtos;
+using ExpenseTracker.Exceptions;
 using ExpenseTracker.Models;
 using ExpenseTracker.Repositories.Interfaces;
 using ExpenseTracker.Services.Interfaces;
@@ -12,15 +13,16 @@ namespace ExpenseTracker.Services
     public class UserService : IUserService
     {
         private readonly IUserRepository _userRepository;
-        private readonly ILogger<UserController> _logger;
+        private readonly ILogger<UserService> _logger;
         private readonly IMapper _mapper;
-        
-        
-        public UserService(IUserRepository userRepository, ILogger<UserController> logger, IMapper mapper)
+        private readonly IPasswordService _passwordService;
+
+        public UserService(IUserRepository userRepository, ILogger<UserService> logger, IMapper mapper, IPasswordService passwordService)
         {
             _userRepository = userRepository;
             _logger = logger;
             _mapper = mapper;
+            _passwordService = passwordService;
         }
 
         public async Task<UserResponseDto> GetUserByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -29,7 +31,7 @@ namespace ExpenseTracker.Services
             if (user == null)
             {
                 _logger.LogWarning("User with ID {Id} not found.", id);
-                throw new ArgumentException($"User with ID {id} not found.");
+                throw new NotFoundException($"User with ID {id} not found.");
             }
 
             var userResponse = new UserResponseDto
@@ -47,20 +49,20 @@ namespace ExpenseTracker.Services
             var existingUser = await _userRepository.UserExistsAsync(regis.Username, cancellationToken);
 
             if (existingUser == true)
-            { 
-                throw new ArgumentException("User already exists");
+            {
+                throw new ConflictException("User already exists");
             }
-            
-            // Hash and salt the password
-            CreatePasswordHash(regis.Password, out byte[] passwordHash, out byte[] passwordSalt);
+
+            // Hash and salt the password using centralized service
+            var (passwordHash, passwordSalt) = _passwordService.HashPassword(regis.Password);
 
             var entity = _mapper.Map<User>(regis);
             entity.PasswordHash = passwordHash;
             entity.PasswordSalt = passwordSalt;
             entity.Role = "User"; // Default role, can be changed later
 
-            await _userRepository.CreateUserAsync(entity, cancellationToken);    
-            
+            await _userRepository.CreateUserAsync(entity, cancellationToken);
+
             var user = await _userRepository.GetByUserNameAsync(entity.Username, cancellationToken);
 
             var mappedUser = _mapper.Map<RegisterResponseDto>(user);
@@ -74,7 +76,7 @@ namespace ExpenseTracker.Services
 
             if (existingUser == null)
             {
-                throw new ArgumentException("User id not exists");
+                throw new NotFoundException("User id not exists");
             }
 
             if (!string.IsNullOrWhiteSpace(userUpdateDto.Email))
@@ -85,7 +87,7 @@ namespace ExpenseTracker.Services
             if (!string.IsNullOrWhiteSpace(userUpdateDto.Password))
             {
                 // Hash and salt the password
-                CreatePasswordHash(userUpdateDto.Password, out byte[] passwordHash, out byte[] passwordSalt);
+                var (passwordHash, passwordSalt) = _passwordService.HashPassword(userUpdateDto.Password);
 
                 existingUser.PasswordHash = passwordHash;
                 existingUser.PasswordSalt = passwordSalt;
@@ -95,21 +97,12 @@ namespace ExpenseTracker.Services
             {
                 existingUser.NickName = userUpdateDto.NickName;
             }
-            
+
             await _userRepository.UpdateUserAsync(existingUser, cancellationToken);
-                        
+
             var mappedUser = _mapper.Map<UserResponseDto>(existingUser);
 
             return mappedUser;
-        }
-
-        public void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
-        {
-            using (var hmac = new System.Security.Cryptography.HMACSHA512())
-            {
-                passwordSalt = hmac.Key;
-                passwordHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-            }
         }
     }
 }

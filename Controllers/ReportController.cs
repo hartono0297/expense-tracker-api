@@ -26,7 +26,8 @@ namespace ExpenseTracker.Controllers
         public async Task<ActionResult<ApiResponse<PaginatedResponse<MonthlyReportDto>>>> GetMonthlyReportAsync(int user, int month, int year, int page = 1, int limit = 5)
         {
                 var data = await _reportService.GetMonthlyReportAsync(user, month, year, page, limit);
-                return new ApiResponse<PaginatedResponse<MonthlyReportDto>>(data);            
+
+                return Ok(new ApiResponse<PaginatedResponse<MonthlyReportDto>>(data, "Success"));                
         }
     }
 }

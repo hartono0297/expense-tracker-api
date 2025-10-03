@@ -2,7 +2,9 @@
 using System.Text.Json.Serialization;
 using System.ComponentModel.DataAnnotations;
 using ExpenseTracker.Models.Responses;
+using ExpenseTracker.Exceptions;
 using Microsoft.AspNetCore.Hosting;
+using System.Data.Common;
 
 namespace ExpenseTracker.Middlewares
 {
@@ -44,9 +46,21 @@ namespace ExpenseTracker.Middlewares
                         statusCode = StatusCodes.Status401Unauthorized;
                         message = "Unauthorized";
                         break;
+                    case NotFoundException _:
+                        statusCode = StatusCodes.Status404NotFound;
+                        message = ex.Message;
+                        break;
+                    case ConflictException _:
+                        statusCode = StatusCodes.Status409Conflict;
+                        message = ex.Message;
+                        break;
                     case KeyNotFoundException _:
                         statusCode = StatusCodes.Status404NotFound;
                         message = ex.Message;
+                        break;
+                    case DbException _:
+                        statusCode = StatusCodes.Status500InternalServerError;
+                        message = "A database error occurred.";
                         break;
                     default:
                         // keep generic message for production

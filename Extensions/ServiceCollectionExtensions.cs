@@ -25,6 +25,7 @@ namespace ExpenseTracker.Extensions
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IJWTService, JwtTokenService>();
             services.AddScoped<IReportService, ReportService>();
+            services.AddScoped<IPasswordService, PasswordService>();
             // Add more here...
             return services;
         }

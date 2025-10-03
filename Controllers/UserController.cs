@@ -27,15 +27,15 @@ namespace ExpenseTracker.Controllers
         }
 
         [Authorize]
-        [HttpGet] 
+        [HttpGet]
         public async Task<ActionResult<ApiResponse<UserResponseDto>>> GetUserById(CancellationToken cancellationToken = default)
-        {     
-                if(!User.TryGetUserId(out var userId))
-                    return Unauthorized(ApiResponse<UserResponseDto>.Fail("User is not authorized"));
+        {
+            if(!User.TryGetUserId(out var userId))
+                return Unauthorized(ApiResponse<UserResponseDto>.Fail("User is not authorized"));
 
-                var user = await _userService.GetUserByIdAsync(userId, cancellationToken);
+            var user = await _userService.GetUserByIdAsync(userId, cancellationToken);
 
-                return Ok(ApiResponse<UserResponseDto>.SuccessResponse(user, "User found successfully."));           
+            return Ok(ApiResponse<UserResponseDto>.SuccessResponse(user, "User found successfully."));
         }
 
         [Authorize]
@@ -59,19 +59,29 @@ namespace ExpenseTracker.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<RegisterResponseDto>>> CreateUser(RegisterRequestDto regis, CancellationToken cancellationToken = default)
-        {                  
-               var user =  await _userService.CreateUserAsync(regis);                
-               
-                return CreatedAtAction(nameof(GetUserById), new { UserId = user.Id }, ApiResponse<RegisterResponseDto>.SuccessResponse(user, "User created successfully."));
+        public async Task<ActionResult<ApiResponse<RegisterResponseDto>>> CreateUser([FromBody] RegisterRequestDto regis, CancellationToken cancellationToken = default)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<RegisterResponseDto>.Fail("Invalid request data"));
+            }
+
+            var user =  await _userService.CreateUserAsync(regis, cancellationToken);
+
+            return CreatedAtAction(nameof(GetUserById), new { userId = user.Id }, ApiResponse<RegisterResponseDto>.SuccessResponse(user, "User created successfully."));
         }
 
         [Authorize]
-        [HttpPut] 
+        [HttpPut]
         public async Task<ActionResult<ApiResponse<UserResponseDto>>> UpdateUser(UserUpdateDto user, CancellationToken cancellationToken = default)
         {
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized(ApiResponse<UserResponseDto>.Fail("User is not authorized"));
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<UserResponseDto>.Fail("Invalid request data"));
+            }
 
             var result = await _userService.UpdateUserAsync(userId, user, cancellationToken);
                 return Ok(ApiResponse<UserResponseDto>.SuccessResponse(result, "User updated successfully."));

@@ -1,9 +1,9 @@
 ﻿using ExpenseTracker.Data;
 using ExpenseTracker.DTOs.ExpenseDtos;
+using ExpenseTracker.Extensions;
 using ExpenseTracker.Models;
 using ExpenseTracker.Models.Responses;
 using ExpenseTracker.Services.Interfaces;
-using ExpenseTracker.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading;
@@ -31,7 +31,9 @@ namespace ExpenseTracker.Controllers
                 return Unauthorized(ApiResponse<PaginatedResponse<ExpenseDto>>.Fail("User is not authorized"));
 
             var data = await _expenseService.GetExpensesAsync(userId, page, limit, search, cancellationToken);
-            return Ok(new ApiResponse<PaginatedResponse<ExpenseDto>>(data, "Success"));
+            
+            //return Ok(new ApiResponse<PaginatedResponse<ExpenseDto>>(data, "Success"));
+            return Ok(ApiResponse<PaginatedResponse<ExpenseDto>>.SuccessResponse(data, "Success"));
         }
 
         [HttpGet("{id}")]
@@ -44,7 +46,7 @@ namespace ExpenseTracker.Controllers
             if (expense == null)
                 return NotFound(ApiResponse<ExpenseDto>.Fail("Expense not found"));
 
-            return Ok(new ApiResponse<ExpenseDto>(expense, "Success"));
+            return Ok(ApiResponse<ExpenseDto>.SuccessResponse(expense, "Success"));           
         }
 
         [HttpPost]
@@ -52,6 +54,12 @@ namespace ExpenseTracker.Controllers
         {
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized(ApiResponse<ExpenseDto>.Fail("User is not authorized"));
+
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<ExpenseDto>.Fail("Invalid request data"));
+            }
 
             var data = await _expenseService.CreateExpenseAsync(dto, userId, cancellationToken);
             return CreatedAtAction(nameof(GetExpenseById), new { id = data.Id }, new ApiResponse<ExpenseDto>(data, "expense created"));
@@ -62,6 +70,11 @@ namespace ExpenseTracker.Controllers
         {
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized(ApiResponse<ExpenseDto>.Fail("User is not authorized"));
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponse<ExpenseDto>.Fail("Invalid request data"));
+            }
 
             var update = await _expenseService.UpdateExpenseAsync(id, dto, userId, cancellationToken);
             return Ok(new ApiResponse<ExpenseDto>(update, "expense updated"));

@@ -21,10 +21,7 @@ namespace ExpenseTracker.Controllers
 
         [HttpPost]
         public async Task<ActionResult<ApiResponse<LoginResponseDto>>> LoginAsync(LoginRequestDto loginRequest)
-        {
-
-            try
-            {
+        {     
                 var response = await _authService.LoginAsync(loginRequest);
 
                 if (response is null)
@@ -33,20 +30,7 @@ namespace ExpenseTracker.Controllers
                     return Unauthorized(new ApiResponse<LoginResponseDto>("Invalid login"));
                 }
 
-                return Ok(new ApiResponse<LoginResponseDto>(response));
-
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                _logger.LogWarning(ex, "Unauthorized access: {Message}", ex.Message);
-                return BadRequest (new ApiResponse<LoginResponseDto>(ex.Message));
-            }
-            catch (DbException dbEx)
-            {
-                _logger.LogError(dbEx, "Database error occurred during login for user {UserName}", loginRequest.Username);
-                return StatusCode(StatusCodes.Status500InternalServerError, new ApiResponse<LoginResponseDto>("Database error occurred"));
-            }
-
+                return Ok(ApiResponse<LoginResponseDto>.SuccessResponse(response, "Login successful"));            
         }
     }
 }
