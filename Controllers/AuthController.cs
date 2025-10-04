@@ -32,5 +32,12 @@ namespace ExpenseTracker.Controllers
 
                 return Ok(ApiResponse<LoginResponseDto>.SuccessResponse(response, "Login successful"));            
         }
+
+        [HttpPost("refresh")]
+        public async Task<ActionResult<ApiResponse<RefreshResponseDto>>> RefreshToken([FromBody] RefreshRequestDto request)
+        {
+            var response = await _authService.RefreshTokenAsync(request);
+            return Ok(ApiResponse<RefreshResponseDto>.SuccessResponse(response, "Token refreshed"));
+        }
     }
 }

@@ -2,7 +2,7 @@ using AutoMapper;
 using ExpenseTracker.DTOs.ExpenseDtos;
 using ExpenseTracker.Models;
 
-namespace ExpenseTracker.Mappings
+namespace ExpenseTracker.Common.Mappings
 {
     public class ExpenseProfile : Profile
     {

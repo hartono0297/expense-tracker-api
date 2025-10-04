@@ -1,7 +1,7 @@
 using System;
 using System.Security.Claims;
 
-namespace ExpenseTracker.Extensions
+namespace ExpenseTracker.Common.Extensions
 {
     public static class ClaimsPrincipalExtensions
     {

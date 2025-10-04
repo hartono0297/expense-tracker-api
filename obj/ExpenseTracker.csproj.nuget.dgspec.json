@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Test\\ExpenseTracker\\Backend\\ExpenseTracker\\ExpenseTracker.csproj": {}
+    "D:\\GitHub\\Expense Tracker\\expense-tracker-api\\ExpenseTracker.csproj": {}
   },
   "projects": {
-    "D:\\Test\\ExpenseTracker\\Backend\\ExpenseTracker\\ExpenseTracker.csproj": {
+    "D:\\GitHub\\Expense Tracker\\expense-tracker-api\\ExpenseTracker.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Test\\ExpenseTracker\\Backend\\ExpenseTracker\\ExpenseTracker.csproj",
+        "projectUniqueName": "D:\\GitHub\\Expense Tracker\\expense-tracker-api\\ExpenseTracker.csproj",
         "projectName": "ExpenseTracker",
-        "projectPath": "D:\\Test\\ExpenseTracker\\Backend\\ExpenseTracker\\ExpenseTracker.csproj",
-        "packagesPath": "C:\\Users\\hartono\\.nuget\\packages\\",
-        "outputPath": "D:\\Test\\ExpenseTracker\\Backend\\ExpenseTracker\\obj\\",
+        "projectPath": "D:\\GitHub\\Expense Tracker\\expense-tracker-api\\ExpenseTracker.csproj",
+        "packagesPath": "C:\\Users\\Hartono\\.nuget\\packages\\",
+        "outputPath": "D:\\GitHub\\Expense Tracker\\expense-tracker-api\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\hartono\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Hartono\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -26,6 +26,7 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -75,6 +76,22 @@
               "suppressParent": "All",
               "target": "Package",
               "version": "[8.0.16, )"
+            },
+            "Serilog.AspNetCore": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Serilog.Sinks.Console": {
+              "target": "Package",
+              "version": "[6.0.0, )"
+            },
+            "Serilog.Sinks.File": {
+              "target": "Package",
+              "version": "[7.0.0, )"
+            },
+            "Serilog.Sinks.Seq": {
+              "target": "Package",
+              "version": "[9.0.0, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",

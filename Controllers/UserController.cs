@@ -1,8 +1,8 @@
-﻿using ExpenseTracker.Data;
+﻿using ExpenseTracker.Common.Extensions;
+using ExpenseTracker.Data;
 using ExpenseTracker.DTOs.ExpenseDtos;
 using ExpenseTracker.DTOs.RegisterDtos;
 using ExpenseTracker.DTOs.UserDtos;
-using ExpenseTracker.Extensions;
 using ExpenseTracker.Models;
 using ExpenseTracker.Models.Responses;
 using ExpenseTracker.Services.Interfaces;
@@ -61,11 +61,6 @@ namespace ExpenseTracker.Controllers
         [HttpPost]
         public async Task<ActionResult<ApiResponse<RegisterResponseDto>>> CreateUser([FromBody] RegisterRequestDto regis, CancellationToken cancellationToken = default)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<RegisterResponseDto>.Fail("Invalid request data"));
-            }
-
             var user =  await _userService.CreateUserAsync(regis, cancellationToken);
 
             return CreatedAtAction(nameof(GetUserById), new { userId = user.Id }, ApiResponse<RegisterResponseDto>.SuccessResponse(user, "User created successfully."));
@@ -77,11 +72,6 @@ namespace ExpenseTracker.Controllers
         {
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized(ApiResponse<UserResponseDto>.Fail("User is not authorized"));
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<UserResponseDto>.Fail("Invalid request data"));
-            }
 
             var result = await _userService.UpdateUserAsync(userId, user, cancellationToken);
                 return Ok(ApiResponse<UserResponseDto>.SuccessResponse(result, "User updated successfully."));

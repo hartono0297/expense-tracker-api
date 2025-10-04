@@ -2,7 +2,7 @@
 using ExpenseTracker.Controllers;
 using ExpenseTracker.DTOs.RegisterDtos;
 using ExpenseTracker.DTOs.UserDtos;
-using ExpenseTracker.Exceptions;
+using ExpenseTracker.Common.Exceptions;
 using ExpenseTracker.Models;
 using ExpenseTracker.Repositories.Interfaces;
 using ExpenseTracker.Services.Interfaces;

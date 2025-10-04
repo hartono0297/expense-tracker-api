@@ -1427,10 +1427,10 @@
     },
     "securitySchemes": {
       "Bearer": {
-        "type": "http",
-        "description": "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
-        "scheme": "Bearer",
-        "bearerFormat": "JWT"
+        "type": "apiKey",
+        "description": "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer {token}'",
+        "name": "Authorization",
+        "in": "header"
       }
     }
   },

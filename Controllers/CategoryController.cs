@@ -1,5 +1,5 @@
-﻿using ExpenseTracker.DTOs.CategoryDtos;
-using ExpenseTracker.Extensions;
+﻿using ExpenseTracker.Common.Extensions;
+using ExpenseTracker.DTOs.CategoryDtos;
 using ExpenseTracker.Models;
 using ExpenseTracker.Models.Responses;
 using ExpenseTracker.Services.Interfaces;
@@ -50,8 +50,6 @@ namespace ExpenseTracker.Controllers
                 return Unauthorized(ApiResponse<CategoryDto>.Fail("User is not authorized"));
 
             var category = await _categoryService.GetCategoryByIdAsync(id, cancellationToken);
-            if (category == null)
-                return NotFound(ApiResponse<CategoryDto>.Fail("Category not found"));
 
             return Ok(new ApiResponse<CategoryDto>(category, "Success"));
         }
@@ -61,11 +59,6 @@ namespace ExpenseTracker.Controllers
         {
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized(ApiResponse<CategoryDto>.Fail("User is not authorized"));
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<CategoryDto>.Fail("Invalid request data"));
-            }
 
             var category = await _categoryService.CreateCategoryAsync(dto, userId, cancellationToken);
             // Return 201 with location header using action
@@ -77,11 +70,6 @@ namespace ExpenseTracker.Controllers
         {
             if (!User.TryGetUserId(out var userId))
                 return Unauthorized(ApiResponse<CategoryDto>.Fail("User is not authorized"));
-
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ApiResponse<CategoryDto>.Fail("Invalid request data"));
-            }
 
             var update = await _categoryService.UpdateCategoryAsync(id, userId, dto, cancellationToken);
             return Ok(new ApiResponse<CategoryDto>(update, "Category updated"));

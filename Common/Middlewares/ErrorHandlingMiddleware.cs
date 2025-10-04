@@ -2,11 +2,11 @@
 using System.Text.Json.Serialization;
 using System.ComponentModel.DataAnnotations;
 using ExpenseTracker.Models.Responses;
-using ExpenseTracker.Exceptions;
+using ExpenseTracker.Common.Exceptions;
 using Microsoft.AspNetCore.Hosting;
 using System.Data.Common;
 
-namespace ExpenseTracker.Middlewares
+namespace ExpenseTracker.Common.Middlewares
 {
     public class ErrorHandlingMiddleware
     {

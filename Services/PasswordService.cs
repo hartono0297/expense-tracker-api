@@ -1,3 +1,4 @@
+using ExpenseTracker.Services.Interfaces;
 using System.Security.Cryptography;
 
 namespace ExpenseTracker.Services

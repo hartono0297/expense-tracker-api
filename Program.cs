@@ -1,35 +1,42 @@
 ﻿using ExpenseTracker.Data;
 using ExpenseTracker.Models;
-using ExpenseTracker.Repositories.Interfaces;
-using ExpenseTracker.Repositories;
-using ExpenseTracker.Services.Interfaces;
-using ExpenseTracker.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using ExpenseTracker.Middlewares;
-using ExpenseTracker.Extensions;
 using System.Text.Json;
 using System.Security.Claims;
-using Microsoft.Extensions.Logging;
-using AutoMapper;
+using ExpenseTracker.Common.Extensions;
+using ExpenseTracker.Common.Middlewares;
+using ExpenseTracker.Common.Helpers;
+using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Json;
+
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("System", LogEventLevel.Warning)
+    .WriteTo.Console()
+    .WriteTo.File(new JsonFormatter(), "Logs/log.json", rollingInterval: RollingInterval.Day)
+    .WriteTo.Seq("http://localhost:5341") // Seq integration
+    .Enrich.FromLogContext()
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILogger<Program>>();
-// Tambahkan ini agar bisa diakses publik
-//builder.WebHost.UseUrls("http://0.0.0.0:5000");
 
+builder.Host.UseSerilog();
+
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Add services to the container
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
 });
 
-logger.LogInformation("Connection String from appsettings/env: {ConnectionString}", connectionString);
-
-// Add services to the container.
 // Add EF Core
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString, sqlServerOptionsAction: sqlOptions =>
@@ -44,7 +51,6 @@ var jwtSettings = builder.Configuration.GetSection("Jwt");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -63,72 +69,67 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             },
             OnChallenge = context =>
             {
-                // Prevent default 401 response
                 context.HandleResponse();
-
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                 context.Response.ContentType = "application/json";
-
                 var json = JsonSerializer.Serialize(new
                 {
                     success = false,
                     message = "You are not authorized. Please login first."
                 });
-
                 return context.Response.WriteAsync(json);
             }
         };
-
-        options.TokenValidationParameters = new TokenValidationParameters
+        var tokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtSettings["Issuer"],
             ValidAudience = jwtSettings["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"])),
             RoleClaimType = ClaimTypes.Role,
-            ClockSkew = TimeSpan.FromMinutes(5) // Allow a 5 minute window if needed
+            ClockSkew = TimeSpan.FromMinutes(5)
         };
-
+        if (builder.Environment.IsDevelopment())
+        {
+            tokenValidationParameters.ValidateIssuer = false;
+            tokenValidationParameters.ValidateAudience = false;
+        }
+        else
+        {
+            tokenValidationParameters.ValidateIssuer = true;
+            tokenValidationParameters.ValidateAudience = true;
+        }
+        options.TokenValidationParameters = tokenValidationParameters;
     });
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy => policy
-                        .WithOrigins("http://localhost:8080") // 👈 your Vue port
-                        //.WithOrigins("http://expensetracker-webapi.s3-website-ap-southeast-2.amazonaws.com")                        
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        //.AllowCredentials()
-                        );
+            .WithOrigins("http://localhost:8080")
+            //.WithOrigins("http://expensetracker-webapi.s3-website-ap-southeast-2.amazonaws.com")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            // .AllowCredentials() // Uncomment if needed
+    );
 });
 
 builder.Services.AddAuthorization();
-builder.Services.AddControllers();
-builder.Services
-    .AddRepositories()
-    .AddServices();
-
-// Register AutoMapper by scanning this assembly for profiles
+builder.Services.AddRepositories();
+builder.Services.AddServices();
 builder.Services.AddAutoMapper(typeof(Program));
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
+    // Always use ApiKey for Swagger UI preauthorization
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Description = "JWT Authorization header using the Bearer scheme. Example: 'Authorization: Bearer {token}'",
         Name = "Authorization",
         In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http, // Use Http for JWT Bearer
-        Scheme = "Bearer",
-        BearerFormat = "JWT"
+        Type = SecuritySchemeType.ApiKey // This is required for preauthorizeApiKey to work
     });
-
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
@@ -150,42 +151,68 @@ var app = builder.Build();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseMiddleware<LoggingMiddleware>();
 
-// Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-//}
+app.UseSwagger();
+app.UseStaticFiles();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+        c.InjectJavascript("/swagger/custom.js");
+    });
+}
+else
+{
+    // Require authentication for Swagger UI in production
+    app.UseWhen(context => context.Request.Path.StartsWithSegments("/swagger"), appBuilder =>
+    {
+        appBuilder.UseAuthentication();
+        appBuilder.UseAuthorization();
+        appBuilder.Use(async (context, next) =>
+        {
+            var user = context.User;
+
+            if (user?.Identity?.IsAuthenticated != true)
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                await context.Response.WriteAsync("Unauthorized - Please login first");
+                return;
+            }
+
+            // check role claim
+            if (!user.IsInRole("Admin"))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsync("Forbidden - Admin role required");
+                return;
+            }
+
+            await next();
+        });
+    });
+
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
+    });
+}
+
 app.UseCors("AllowFrontend");
-//app.UseHttpsRedirection();
+// app.UseHttpsRedirection(); // Uncomment if using HTTPS
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-using (var scope = app.Services.CreateScope())
+
+// Async database seeding
+try
 {
-    try
-    {
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        if (!db.Categories.Any())
-        {
-            db.Categories.AddRange(
-                new Category { Name = "Uncategorized", IsActive = true, UserId = null },
-                new Category { Name = "Food", IsActive = true, UserId = null },
-                new Category { Name = "Transport", IsActive = true, UserId = null },
-                new Category { Name = "Utilities", IsActive = true, UserId = null } 
-            );
-        }      
-
-        db.SaveChanges();
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Seeding failed: {ex.Message}");
-    }
+    await DbSeeder.SeedDatabaseAsync(app.Services);
 }
-
+catch (Exception ex)
+{
+    Console.WriteLine($"Seeding failed: {ex.Message}");
+}
 
 app.MapGet("/health", () => Results.Ok("OK"));
 app.Run();

@@ -1,10 +1,11 @@
-﻿using ExpenseTracker.Controllers;
+﻿using AutoMapper;
+using ExpenseTracker.Common.Exceptions;
+using ExpenseTracker.Controllers;
 using ExpenseTracker.DTOs.ExpenseDtos;
 using ExpenseTracker.Models;
 using ExpenseTracker.Models.Responses;
 using ExpenseTracker.Repositories.Interfaces;
 using ExpenseTracker.Services.Interfaces;
-using AutoMapper;
 using System.Threading;
 
 namespace ExpenseTracker.Services
@@ -110,7 +111,7 @@ namespace ExpenseTracker.Services
         {
             var expense = await _expenseRepository.GetByIdAsync(id, cancellationToken);
             if (expense == null || expense.UserId != userId)
-                return null;
+                throw new NotFoundException("Expense not found");
             return _mapper.Map<ExpenseDto>(expense);
         }
 

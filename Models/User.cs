@@ -11,5 +11,6 @@
         public string Role { get; set; }
 
         public ICollection<Expense> Expenses { get; set; }
+        public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     }
 }

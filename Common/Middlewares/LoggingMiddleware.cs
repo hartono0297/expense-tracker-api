@@ -1,4 +1,4 @@
-﻿namespace ExpenseTracker.Middlewares
+﻿namespace ExpenseTracker.Common.Middlewares
 {
     public class LoggingMiddleware
     {

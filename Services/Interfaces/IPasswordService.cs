@@ -1,4 +1,4 @@
-namespace ExpenseTracker.Services
+namespace ExpenseTracker.Services.Interfaces
 {
     public interface IPasswordService
     {

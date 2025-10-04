@@ -1,6 +1,6 @@
 using System;
 
-namespace ExpenseTracker.Exceptions
+namespace ExpenseTracker.Common.Exceptions
 {
     public class NotFoundException : Exception
     {

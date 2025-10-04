@@ -3,7 +3,7 @@ using ExpenseTracker.DTOs.RegisterDtos;
 using ExpenseTracker.DTOs.UserDtos;
 using ExpenseTracker.Models;
 
-namespace ExpenseTracker.Mappings
+namespace ExpenseTracker.Common.Mappings
 {
     public class UserProfile : Profile
     {

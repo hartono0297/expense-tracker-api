@@ -4,7 +4,7 @@ using ExpenseTracker.Repositories;
 using ExpenseTracker.Services.Interfaces;
 using ExpenseTracker.Services;
 
-namespace ExpenseTracker.Extensions
+namespace ExpenseTracker.Common.Extensions
 {
     public static class ServiceCollectionExtensions
     {

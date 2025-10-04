@@ -5,6 +5,7 @@ using ExpenseTracker.Models;
 using ExpenseTracker.Models.Responses;
 using ExpenseTracker.Repositories.Interfaces;
 using ExpenseTracker.Services.Interfaces;
+using ExpenseTracker.Common.Exceptions;
 
 namespace ExpenseTracker.Services
 {
@@ -42,7 +43,7 @@ namespace ExpenseTracker.Services
         {
             var category = await _categoryRepository.GetCategoryByIdAsync(id, cancellationToken);
             if (category == null)
-                return null;
+                throw new NotFoundException("Category not found");
 
             return _mapper.Map<CategoryDto>(category);
         }
